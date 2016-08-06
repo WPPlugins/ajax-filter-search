@@ -56,7 +56,8 @@ if( !class_exists('AFSAdmin') ) :
 				'fields'			=> array(
 										array(
 											'field_name' 		=> '_table_header',
-											'field_description' => 'Select a color for the table header.'
+											'field_description' => 'Select a color for the table header.',
+											'default'			=> '#f1b45c'
 										),
 								   )
 			),
@@ -101,8 +102,10 @@ if( !class_exists('AFSAdmin') ) :
 				if($fields) {
 					foreach($fields as $field) { 
 						$field_function = AFS_SUB.'_'.$tab['name'].$field['field_name'];
-						$field_default	= $field['default'];
-						$defaults[$field_function] = $field_default;
+						if(isset($field['default'])) {
+							$field_default	= $field['default'];
+							$defaults[$field_function] = $field_default;
+						}
 					} 
 				}
 			}
@@ -255,7 +258,7 @@ if( !class_exists('AFSAdmin') ) :
 							}
 						}	
 					} else {
-						echo '<option value="none" '.$sel.'>None</option>';
+						echo '<option value="none" selected="selected">None</option>';
 					}
 				?>
 			</select>
@@ -399,7 +402,7 @@ if( !class_exists('AFSAdmin') ) :
 						do_settings_sections( AFS_SUB.'_'.$active_tab );
 					}
 					
-					submit_button();
+					submit_button( 'Save Settings' );
 					?>
 			
 				</form>

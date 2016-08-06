@@ -5,8 +5,37 @@
 // [ajax_filter_search]
 function ajax_filter_search($atts, $content = null) {
     extract(shortcode_atts(array(
+		'post_type'				=> AFSAdmin::afs_retrieve('_general_post_type'),
+		'post_tax' 				=> AFSAdmin::afs_retrieve('_general_post_taxonomy'),
+		'posts_per_page'		=> AFSAdmin::afs_retrieve('_general_posts_per_page'),
+		'filter_type'			=> '',
+		'filter_by' 				=> '',
+		'filter_months' 			=> '',
+		'filter_years' 			=> '',
+		'filter_withPDF' 		=> '',
+		'offset' 				=> 0,
     ), $atts));
 	
+	// Build String to attach to [afs_feed] to allow for custom building
+	$afs_args = '';
+	if($post_type == '') { } else { $afs_args .=' post_type="'.$post_type.'" '; }
+	if($posts_per_page == '') { } else { $afs_args .=' posts_per_page="'.$posts_per_page.'" '; }
+	if($filter_by == '') { } else { $afs_args .=' filter_by="'.$filter_by.'" '; }
+	if($filter_months == '') { } else { $afs_args .=' filter_months="'.$filter_months.'" '; }
+	if($filter_years == '') { } else { $afs_args .=' filter_years="'.$filter_years.'" '; }
+	if($filter_withPDF == '') { } else { $afs_args .=' filter_withPDF="'.$filter_withPDF.'" '; }
+	if($offset == '') { } else { $afs_args .=' offset="'.$offset.'" '; }
+		
+	if($filter_type == '') { 
+		$all='all'; 
+		$filter_type_count = 999;
+	} else { 
+		$afs_args .=' filter_type="'.$filter_type.'" '; 
+		$all=$filter_type;
+		$filter_type_array = explode(',',$filter_type);
+		$filter_type_count = count($filter_type_array);
+	}
+		
 	$text = '';
 	$i = 1;
 	
@@ -24,35 +53,58 @@ function ajax_filter_search($atts, $content = null) {
 	/****************************
 	Top Tabs
 	****************************/
-	if(AFSAdmin::afs_retrieve('_general_show_filters') == 1) { 
+	
+	if(AFSAdmin::afs_retrieve('_general_show_filters') == 1 && $filter_type_count > 1) { 
+	$taxonomy = AFSAdmin::afs_retrieve('_general_post_taxonomy');
+		if($taxonomy == 'none' || $taxonomy == '') {
+		} else {
                 
-	$text .= '					<div class="afs-Tabs col-xs-12">';
-	$text .= '						<ul class="hidden-xs afs-CommonTabs">';
-	$text .= '							<li class="active"><a rel="all" href="#">All</a></li>';
-				
-										$taxonomy = AFSAdmin::afs_retrieve('_general_post_taxonomy');
-										$terms = get_terms($taxonomy, $args = array('orderby'=>'id')	);
-										foreach($terms as $term) {
-											if($term->name == 'Uncategorized') { continue; }
-											$text .= '<li><a rel="'.$term->slug.'" href="#">'.$term->name.'</a></li>';
-										}
-				
-	$text .= '						</ul>';
-	
-	$text .= '						<input type="hidden" name="filingType" />';
-	
-	$text .= '						<div class="form-group visible-xs" style="margin-left: -15px;">';
-	
-	$text .= '							<label for="category"><strong>Display:&nbsp;</strong></label>';
-	$text .= '							<select name="category">';
-	$text .= '								<option value="all">All Releases</option>';
-											foreach($terms as $term) {
-												if($term->name == 'Uncategorized') { continue; }
-												$text .= '<option value="'.$term->slug.'">'.$term->name.'</option>';
-											}
-	$text .= '							</select>';
-	$text .= '						</div>';
-	$text .= '					</div>';
+			$text .= '					<div class="afs-Tabs col-xs-12">';
+			$text .= '						<ul class="hidden-xs afs-CommonTabs">';
+			$text .= '							<li class="active"><a rel="'.$all.'" href="#">All</a></li>';
+						
+												$terms = get_terms($taxonomy, $args = array('orderby'=>'id')	);
+												if($terms) {
+													foreach($terms as $term) {
+														if(isset($filter_type_array)) {
+															if(in_array($term->slug,$filter_type_array)) {
+																if($term->name == 'Uncategorized') { continue; }
+																$text .= '<li><a rel="'.$term->slug.'" href="#">'.$term->name.'</a></li>';
+															}
+														} else {
+															if($term->name == 'Uncategorized') { continue; }
+															$text .= '<li><a rel="'.$term->slug.'" href="#">'.$term->name.'</a></li>';
+														}
+													}
+												}
+			$text .= '						</ul>';
+			
+			$text .= '						<input type="hidden" name="filingType" />';
+			
+			$text .= '						<div class="form-group visible-xs" style="margin-left: -15px;">';
+			
+			$text .= '							<label for="category"><strong>Display:&nbsp;</strong></label>';
+			$text .= '							<select name="category">';
+			$text .= '								<option value="all">All</option>';
+													$terms = get_terms($taxonomy, $args = array('orderby'=>'id')	);
+													if($terms) {
+													
+														foreach($terms as $term) {
+															if(isset($filter_type_array)) {
+																if(in_array($term->slug,$filter_type_array)) {
+																	if($term->name == 'Uncategorized') { continue; }
+																	$text .= '<option value="'.$term->slug.'">'.$term->name.'</option>';
+																}
+															} else {
+																if($term->name == 'Uncategorized') { continue; }
+																	$text .= '<option value="'.$term->slug.'">'.$term->name.'</option>';
+															}
+														}
+													}
+			$text .= '							</select>';
+			$text .= '						</div>';
+			$text .= '					</div>';
+		}
  	} 
 	
 	/****************************
@@ -101,8 +153,8 @@ function ajax_filter_search($atts, $content = null) {
 	$text .= '											<div class="col-xs-12 col-sm-3">';
 	$text .= '												<select class="form-control" name="filterYears">';
 	$text .= '													<option value="">All Years</option>';
-										 
-																$years = wp_get_archives(array('type'=>'yearly','echo'=>0));
+										 						
+																$years = wp_get_archives(array('type'=>'yearly','echo'=>0, 'post_type' => $post_type));
 																$years = explode( '</li>' , $years );
 																$years_array = array();
 																foreach( $years as $link ) {
@@ -175,7 +227,7 @@ function ajax_filter_search($atts, $content = null) {
 	Get The Feed
 	****************************/
 	$text .= '									<div id="newsPanelResults" class="jscroll-inner">';
-	$text .= '										[afs_feed]'; // <-- the shortcode
+	$text .= '										[afs_feed '.$afs_args.']'; // <-- the shortcode
 	$text .= '										<div class="clearfix"></div>';
 	$text .= '									</div>';
 	$text .= '									<div class="clearfix"></div>';
@@ -210,19 +262,21 @@ add_shortcode("ajax_filter_search", "ajax_filter_search");
 // [afs_feed]
 function afs_feed($atts, $content = null) {
     extract(shortcode_atts(array(
-		'post_type'			=> AFSAdmin::afs_retrieve('_general_post_type'),
-		'posts_per_page'	=> AFSAdmin::afs_retrieve('_general_posts_per_page'),
-		'filter_type' 		=> '',
-		'filter_by' 			=> '',
-		'filter_months' 		=> '',
-		'filter_years' 		=> '',
-		'filter_withPDF' 	=> '',
-		'offset' 			=> 0,
+		'post_type'				=> AFSAdmin::afs_retrieve('_general_post_type'),
+		'post_tax' 				=> AFSAdmin::afs_retrieve('_general_post_taxonomy'),
+		'posts_per_page'		=> AFSAdmin::afs_retrieve('_general_posts_per_page'),
+		'filter_type' 			=> '',
+		'filter_by' 				=> '',
+		'filter_months' 			=> '',
+		'filter_years' 			=> '',
+		'filter_withPDF' 		=> '',
+		'offset' 				=> 0,
     ), $atts));
 	
 	$text = '';
 	$i = 1;
-		
+	
+	define('FILTER_TYPE', $filter_type);
 	
 	/****************************
 	Define The Args & Defaults
@@ -235,7 +289,6 @@ function afs_feed($atts, $content = null) {
 
 	$args = array(
 		'post_type'			=> $post_type,
-		'category_name' 		=> $filter_type,
 		'posts_per_page' 	=> $posts_per_page,
 		'offset'				=> $offset,
 		'date_query' 		=> array(array()),
@@ -246,7 +299,30 @@ function afs_feed($atts, $content = null) {
 	if($filter_by !== '') { $args['s'] = $filter_by; }
 	if($filter_years !== '') { $args['date_query'][]['year'] = $filter_years; }
 	if($filter_months !== '') { $args['date_query'][]['month'] = $filter_months; }
-
+	if($post_tax == 'none' || $post_tax == '') {
+		// do nothing
+	} else {
+		if($post_tax == 'category') {
+			$args['category_name'] = $filter_type;
+		} elseif($post_tax == 'post_tag') {
+			$args['tag'] = $filter_type;
+		} else {
+			// It's a custom post type:
+			if($filter_type !== '') {
+				
+				$filter_type = explode(',',$filter_type);				
+				$tax_array = array(
+								'taxonomy' => $post_tax,
+								'field' => 'slug',
+								'terms' => $filter_type,
+							);
+				$args['tax_query'][] = $tax_array;
+			}
+			
+			
+		}
+	}
+	
 	$query = new WP_Query($args);
 
 	if ( $query->have_posts() ) { 
@@ -274,56 +350,9 @@ function afs_feed($atts, $content = null) {
 		while ( $query->have_posts() ) { $query->the_post();
 			
 			$text .= '<div id="post-'.get_the_ID().'" class="'.join( '  ', get_post_class( 'afs-Loadingdata afs-HasGA afs-TableRowItem gridPR'.$i )).'" role="article" itemscope itemtype="http://schema.org/BlogPosting" style="'.$mar.'">';
-            $text .= '<div class="prDateCol col-sm-2">';
-            $text .= '	<div class="visible-xs afs-Divider"></div>';
-            $text .= ' 	<div class="afs-PRDate">'.get_the_time('n/d/Y').'</div>';
-       		$text .= '	<div class="afs-PRTimezone"><span class="afs-PRTime">'.get_the_time('g:i a').'</span><span class="afs-timezone">&nbsp;'.get_the_time('T').'</span></div>';
-            $text .= '</div>';
-
-            $text .= '<div class="col-sm-10">';
-            $text .= '   <h6>';
+            
+			$text .= return_template();
 			
-			if(AFSAdmin::afs_retrieve('_general_post_taxonomy') != '' && AFSAdmin::afs_retrieve('_general_post_taxonomy') != 'none') {
-				$cats = get_the_terms(get_the_ID(), AFSAdmin::afs_retrieve('_general_post_taxonomy'));
-				$cat_count = count($cats);
-				$i = 1;
-				if($cats) { // meow
-					foreach( $cats as $cat ) {
-						$comma = ', '; 
-						if($cat_count == $i) { $comma = ''; } 
-						$text .= $cat->name.$comma; 
-						$i++;
-					} 
-				}
-			}
-			$text .= '	</h6>';
-
-            $text .= '   <h4><a href="'.get_the_permalink().'" class="afs-GaLabel afs-EventTracking afs-GaHasFile" data-GaFID="'.get_the_ID().'">'.get_the_title().'</a></h4>';
-            $text .= '    <div class="prDateRow">';
-            $text .= '        <div class="afs-PRDate">'.get_the_time('n/d/Y').'</div>';
-            $text .= '    </div>';
-            $text .= '    <div class="afs-PRTools">';
-            $text .= '        <ul>';
-            $text .= '      		<li class="hideFromGrid last"><a class="showSummary" href="#"><span class="fa fa-plus-square"></span>&nbsp;Summary</a></li>';
-            $text .= '       </ul>';
-            $text .= '       <div class="clearfix"></div>';
-            $text .= '   </div>';
-
-            $text .= '    <div class="afs-PRSummary afs-Hidden">';
-			$text .= '		<p>'.get_the_selected_excerpt(200).'...</p>';
-            $text .= '        <a href="'.get_the_permalink().'" class="afs-EventTracking afs-GaHasTitle" data-GaTitle="HTM"><span class="fa fa-chevron-right"></span>&nbsp;Continue Reading</a>';
-            $text .= '    </div>';
-
-       		$text .= '   <div class="afs-PRRelated afs-PendingHide">';
-         	$text .= '       <ul>';
-         	$text .= '           <li class="first"><strong>Related Material:&nbsp;</strong></li>';
-           	$text .= '           <li><a href="#"><span class="fa fa-microphone"></span>&nbsp;Webcast</a></li>';
-            $text .= '           <li class="last"><a href="#"><span class="fa fa-download"></span>&nbsp;Download - XLS - 3.5MB</a></li>';
-            $text .= '      </ul>';
-
-            $text .= '      <div class="clearfix"></div>';
-            $text .= '   </div>';
-            $text .= '</div>';
             $text .= '<div class="clearfix"></div>';
         	$text .= '</div>';
 			
