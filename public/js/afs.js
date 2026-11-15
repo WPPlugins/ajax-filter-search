@@ -9,8 +9,62 @@
 	'use strict';
 
 	var settings = window.afsSettings || {};
-	var URL_KEYS = [ 'afs_s', 'afs_term', 'afs_month', 'afs_year', 'afs_page', 'afs_layout' ];
+	var URL_KEYS = [ 'afs_s', 'afs_term', 'afs_month', 'afs_year', 'afs_page', 'afs_layout', 'afs_sort' ];
 	var SEARCH_DELAY = 400;
+
+	/**
+	 * Extension points for add-ons. An add-on can load before or after this script:
+	 *
+	 *   ( window.afsRegistry = window.afsRegistry || { q: [] } );
+	 *   var use = function ( api ) { api.on( 'results', function ( e ) { ... } ); };
+	 *   window.afsRegistry.use ? window.afsRegistry.use( use ) : window.afsRegistry.q.push( use );
+	 *
+	 * Hooks: 'loaded' ( { root, config } ), 'before-request' ( { url, state, root }, may change url.searchParams ),
+	 * 'results' ( { root, data, state } ), 'error' ( { root, error } ). The same events (except before-request) are
+	 * also dispatched on the feed element as DOM events: afs:loaded, afs:results, afs:error (bubbling, e.detail).
+	 * A hook that throws is logged and ignored.
+	 */
+	var hooks = {};
+	var api = {
+		version: 1,
+		on: function ( name, fn ) {
+			( hooks[ name ] = hooks[ name ] || [] ).push( fn );
+		},
+	};
+	var registry = ( window.afsRegistry = window.afsRegistry || { q: [] } );
+	registry.api = api;
+	registry.use = function ( fn ) {
+		try {
+			fn( api );
+		} catch ( e ) {
+			log( e );
+		}
+	};
+	( registry.q || [] ).forEach( registry.use );
+	registry.q = [];
+
+	function log( e ) {
+		if ( window.console && window.console.error ) {
+			window.console.error( e );
+		}
+	}
+
+	function run( name, payload ) {
+		( hooks[ name ] || [] ).forEach( function ( fn ) {
+			try {
+				fn( payload );
+			} catch ( e ) {
+				log( e );
+			}
+		} );
+	}
+
+	function emit( name, payload, announce ) {
+		run( name, payload );
+		if ( announce && typeof window.CustomEvent === 'function' ) {
+			payload.root.dispatchEvent( new window.CustomEvent( 'afs:' + name, { bubbles: true, detail: payload } ) );
+		}
+	}
 
 	function debounce( fn, wait ) {
 		var timer;
@@ -58,6 +112,7 @@
 
 		this.bind();
 		root.classList.add( 'afs-js' );
+		emit( 'loaded', { root: root, config: this.config }, true );
 	}
 
 	Widget.prototype.state = function () {
@@ -68,7 +123,14 @@
 			year: this.read( 'afs_year' ),
 			page: this.page,
 			layout: this.layout(),
+			sort: this.read( 'afs_sort' ),
 		};
+	};
+
+	/** The sort the feed starts with (the select's own default), or '' when the control is not shown. */
+	Widget.prototype.defaultSort = function () {
+		var select = this.form.elements.afs_sort;
+		return select ? select.getAttribute( 'data-default' ) || '' : '';
 	};
 
 	Widget.prototype.bind = function () {
@@ -91,7 +153,7 @@
 			);
 		}
 
-		[ 'afs_month', 'afs_year' ].forEach( function ( name ) {
+		[ 'afs_month', 'afs_year', 'afs_sort' ].forEach( function ( name ) {
 			var el = self.form.elements[ name ];
 			if ( el ) {
 				el.addEventListener( 'change', function () {
@@ -112,6 +174,23 @@
 
 		// Category tabs.
 		this.root.addEventListener( 'click', function ( event ) {
+			// A filter chip, Clear all, or the recovery link in an empty result: plain links that also work without JavaScript.
+			var clear = event.target.closest( 'a[data-afs-clear]' );
+			if ( clear && self.root.contains( clear ) ) {
+				event.preventDefault();
+				var key = clear.getAttribute( 'data-afs-clear' );
+				self.apply( key === 'all' ? { s: '', term: '', month: '', year: '' } : ( function ( v ) { v[ key ] = ''; return v; }( {} ) ) );
+				self.page = 1;
+				self.load( true );
+				return;
+			}
+
+			if ( event.target.closest( '.afs-retry' ) ) {
+				event.preventDefault();
+				self.load( false );
+				return;
+			}
+
 			var tab = event.target.closest( '.afs-Tabs a[data-afs-term]' );
 			if ( tab ) {
 				event.preventDefault();
@@ -169,7 +248,7 @@
 	/** Push values into the form controls and tab highlight. */
 	Widget.prototype.apply = function ( values ) {
 		var form = this.form;
-		[ [ 's', 'afs_s' ], [ 'term', 'afs_term' ], [ 'month', 'afs_month' ], [ 'year', 'afs_year' ] ].forEach( function ( pair ) {
+		[ [ 's', 'afs_s' ], [ 'term', 'afs_term' ], [ 'month', 'afs_month' ], [ 'year', 'afs_year' ], [ 'sort', 'afs_sort' ] ].forEach( function ( pair ) {
 			if ( Object.prototype.hasOwnProperty.call( values, pair[ 0 ] ) && form.elements[ pair[ 1 ] ] ) {
 				form.elements[ pair[ 1 ] ].value = values[ pair[ 0 ] ];
 			}
@@ -210,13 +289,14 @@
 			term: params.get( 'afs_term' ) || '',
 			month: params.get( 'afs_month' ) || '',
 			year: params.get( 'afs_year' ) || '',
+			sort: params.get( 'afs_sort' ) || this.defaultSort(),
 		} );
 		this.page = parseInt( params.get( 'afs_page' ), 10 ) || 1;
 		this.setLayout( params.get( 'afs_layout' ) || this.config.layout || 'list' );
 	};
 
-	Widget.prototype.writeUrl = function ( push ) {
-		var state = this.state();
+	/** The page URL that shows the current state (what writeUrl puts in the address bar). */
+	Widget.prototype.urlFor = function ( state ) {
 		var url = cleanUrl();
 		if ( state.s ) {
 			url.searchParams.set( 'afs_s', state.s );
@@ -236,6 +316,14 @@
 		if ( state.layout !== ( this.config.layout || 'list' ) ) {
 			url.searchParams.set( 'afs_layout', state.layout );
 		}
+		if ( state.sort && state.sort !== this.defaultSort() ) {
+			url.searchParams.set( 'afs_sort', state.sort );
+		}
+		return url;
+	};
+
+	Widget.prototype.writeUrl = function ( push ) {
+		var url = this.urlFor( this.state() );
 		if ( url.href !== window.location.href ) {
 			window.history[ push ? 'pushState' : 'replaceState' ]( null, '', url.href );
 		}
@@ -262,8 +350,12 @@
 		url.searchParams.set( 'afs_month', state.month || 0 );
 		url.searchParams.set( 'afs_year', state.year || 0 );
 		url.searchParams.set( 'afs_page', state.page );
+		if ( state.sort && state.sort !== this.defaultSort() ) {
+			url.searchParams.set( 'afs_sort', state.sort );
+		}
 		url.searchParams.set( 'base_url', cleanUrl().href );
 		url.searchParams.set( 'instance', this.root.getAttribute( 'data-afs-instance' ) || 1 );
+		run( 'before-request', { url: url, state: state, root: this.root } );
 
 		if ( this.controller ) {
 			this.controller.abort();
@@ -287,6 +379,7 @@
 			.then( function ( data ) {
 				self.results.innerHTML = data.html;
 				self.finish();
+				emit( 'results', { root: self.root, data: data, state: state }, true );
 				if ( self.syncsUrl ) {
 					self.writeUrl( push );
 				}
@@ -298,10 +391,23 @@
 				if ( error && error.name === 'AbortError' ) {
 					return;
 				}
+				emit( 'error', { root: self.root, error: error }, true );
+				// The server renders every state, so when the request cannot be completed the visitor still gets
+				// their results with a normal page load. Only the feed that owns the address bar can do that;
+				// any other feed shows a message instead.
+				if ( self.syncsUrl ) {
+					window.location.assign( self.urlFor( state ).href );
+					return;
+				}
 				var message = document.createElement( 'p' );
 				message.className = 'afs-error';
 				message.setAttribute( 'role', 'alert' );
-				message.textContent = ( settings.i18n && settings.i18n.error ) || 'Error';
+				message.textContent = ( ( settings.i18n && settings.i18n.error ) || 'Error' ) + ' ';
+				var retry = document.createElement( 'button' );
+				retry.type = 'button';
+				retry.className = 'afs-btn afs-retry';
+				retry.textContent = ( settings.i18n && settings.i18n.retry ) || 'Retry';
+				message.appendChild( retry );
 				self.results.replaceChildren( message );
 				self.finish();
 			} );

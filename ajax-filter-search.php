@@ -3,7 +3,7 @@
  * Plugin Name:       Ajax Filter Search
  * Plugin URI:        https://streetcarpro.com
  * Description:       Displays posts or custom post types in a friendly, filterable format using ajax.
- * Version:           2.0.0
+ * Version:           2.1.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Thomas Dintrone
@@ -19,7 +19,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'AFS_VERSION', '2.0.0' );
+define( 'AFS_VERSION', '2.1.0' );
 define( 'AFS_URL', 'https://streetcarpro.com' );
 
 // Options and slugs. Kept identical to 1.x so saved settings carry over.
@@ -36,12 +36,22 @@ define( 'AFS_PLUGIN_URL', untrailingslashit( plugins_url( '', __FILE__ ) ) );
 
 require_once AFS_PLUGIN_PATH . 'includes/functions.php';
 require_once AFS_PLUGIN_PATH . 'includes/class-afs-settings.php';
+require_once AFS_PLUGIN_PATH . 'includes/class-afs-registry.php';
+require_once AFS_PLUGIN_PATH . 'includes/api.php';
+require_once AFS_PLUGIN_PATH . 'includes/class-afs-query.php';
+require_once AFS_PLUGIN_PATH . 'includes/class-afs-cache.php';
+require_once AFS_PLUGIN_PATH . 'includes/class-afs-migration.php';
 require_once AFS_PLUGIN_PATH . 'includes/class-afs-renderer.php';
 require_once AFS_PLUGIN_PATH . 'includes/class-afs-rest.php';
+require_once AFS_PLUGIN_PATH . 'includes/class-afs-feed.php';
 require_once AFS_PLUGIN_PATH . 'includes/class-afs-frontend.php';
 require_once AFS_PLUGIN_PATH . 'includes/compat.php';
 
 AFSAdmin::init();
 AFS_Frontend::init();
 AFS_REST::init();
+AFS_Feed::init();
 AFS_Compat::init();
+AFS_Registry::init();
+AFS_Cache::init();
+AFS_Migration::init();
