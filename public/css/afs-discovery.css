@@ -1,0 +1,477 @@
+/**
+ * Ajax Filter Search: shared base of the Editorial Grid and Resource Library designs.
+ *
+ * Loaded only for feeds that use one of them (the root carries .afs-discovery). It styles the controls, chips, result bar,
+ * pagination and states; afs-editorial.css and afs-library.css add the items.
+ *
+ * Theme aware: borders, surfaces and muted text are derived from the theme's own text colour (currentColor), so a dark
+ * theme gets a dark feed with no extra setting. Tokens a theme or the block can override:
+ *   .afs-discovery { --afs-accent: #0a7; --afs-radius: 8px; --afs-gap: 1.25rem; }
+ */
+
+.afs-discovery {
+	--afs-radius: 12px;
+	--afs-radius-sm: 10px;
+	--afs-gap: 1.5rem;
+	--afs-border: #d9dde3;
+	--afs-soft: #f3f5f8;
+	--afs-muted: #566170;
+	--afs-tint: #eef2fb;
+	--afs-control: 2.75rem;
+	--afs-on-accent: #fff; /* Set from the accent colour by the plugin (white or near-black, whichever reads better). */
+}
+
+@supports (color: color-mix(in srgb, red, blue)) {
+	.afs-discovery {
+		--afs-border: color-mix(in srgb, currentColor 18%, transparent);
+		--afs-soft: color-mix(in srgb, currentColor 6%, transparent);
+		--afs-muted: color-mix(in srgb, currentColor 68%, transparent);
+		--afs-tint: color-mix(in srgb, var(--afs-accent) 14%, transparent);
+	}
+}
+
+/* Focus: a ring in the text colour is visible on any background, in both themes and in forced-colors mode. */
+.afs-discovery a:focus-visible,
+.afs-discovery button:focus-visible,
+.afs-discovery input:focus-visible,
+.afs-discovery select:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: 2px;
+}
+
+/* The form is a grid with two rows: the category tabs and the layout switch share the first, the filters take the second. */
+.afs-discovery .afs-form {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 1rem;
+}
+
+.afs-discovery .afs-Tabs {
+	grid-column: 1;
+	grid-row: 1;
+}
+
+.afs-discovery .afs-Filters {
+	grid-column: 1 / -1;
+	grid-row: 2;
+}
+
+/* Tabs: pills ------------------------------------------------------------- */
+
+.afs-discovery .afs-Tabs {
+	margin: 0;
+}
+
+.afs-discovery .afs-CommonTabs {
+	gap: 0.5rem;
+	border-bottom: 0;
+}
+
+.afs-discovery .afs-CommonTabs a {
+	margin: 0;
+	padding: 0.45rem 1rem;
+	border: 1px solid var(--afs-border);
+	border-radius: 999px;
+	color: var(--afs-muted);
+	font-size: 0.9375em;
+	font-weight: 600;
+	line-height: 1.3;
+}
+
+.afs-discovery .afs-CommonTabs a:hover {
+	border-color: currentColor;
+	color: inherit;
+}
+
+.afs-discovery .afs-CommonTabs .active a,
+.afs-discovery .afs-CommonTabs .active a:hover {
+	border-color: var(--afs-accent);
+	background: var(--afs-accent);
+	color: var(--afs-on-accent);
+}
+
+/* Filters: one row of controls --------------------------------------------- */
+
+.afs-discovery .afs-Filters {
+	align-items: flex-end;
+	gap: 0.75rem;
+	padding: 0;
+	background: none;
+	border-radius: 0;
+}
+
+/* The selects shrink before they wrap, so month, year and sort stay on the search row in a narrow content column too. */
+.afs-discovery .afs-field {
+	flex: 1 1 8.25rem;
+	max-width: 11rem;
+	min-width: 0;
+}
+
+.afs-discovery .afs-field-search {
+	position: relative;
+	flex: 2 1 12rem;
+	max-width: none;
+}
+
+.afs-discovery .afs-field-search label {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+}
+
+.afs-discovery .afs-field label {
+	font-size: 0.75rem;
+	font-weight: 650;
+	letter-spacing: 0.02em;
+	color: var(--afs-muted);
+}
+
+.afs-discovery .afs-field input,
+.afs-discovery .afs-field select {
+	/* A fixed height and text size, so a theme that enlarges form controls neither moves the search icon or the select caret
+	   off centre nor truncates "All Months" and the placeholder. */
+	height: var(--afs-control);
+	min-height: var(--afs-control);
+	font-size: 0.9375rem;
+	padding: 0 0.85rem;
+	border: 1px solid var(--afs-border);
+	border-radius: var(--afs-radius-sm);
+	background-color: transparent;
+	color: inherit;
+}
+
+.afs-discovery .afs-field input::placeholder {
+	color: var(--afs-muted);
+}
+
+.afs-discovery .afs-field input:hover,
+.afs-discovery .afs-field select:hover {
+	border-color: currentColor;
+}
+
+/* Search icon, drawn with borders so it takes the text colour. */
+.afs-discovery .afs-field-search::before,
+.afs-discovery .afs-field-search::after {
+	content: "";
+	position: absolute;
+	pointer-events: none;
+}
+
+.afs-discovery .afs-field-search::before {
+	left: 0.95rem;
+	bottom: 0.975rem;
+	width: 0.8rem;
+	height: 0.8rem;
+	border: 2px solid var(--afs-muted);
+	border-radius: 50%;
+}
+
+.afs-discovery .afs-field-search::after {
+	left: 1.6rem;
+	bottom: 1.03rem;
+	width: 0.4rem;
+	height: 2px;
+	border-radius: 1px;
+	background: var(--afs-muted);
+	transform: rotate(45deg);
+	transform-origin: 0 50%;
+}
+
+.afs-discovery .afs-field-search input {
+	padding-left: 2.5rem;
+}
+
+/* Selects: a caret in the text colour, set in from the edge. */
+.afs-discovery .afs-field select {
+	padding-right: 2.5rem;
+	appearance: none;
+	background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+	background-position: calc(100% - 1.2rem) 55%, calc(100% - 0.9rem) 55%;
+	background-size: 0.3rem 0.3rem, 0.3rem 0.3rem;
+	background-repeat: no-repeat;
+}
+
+/* The open list is drawn by the browser: keep it readable whatever the theme colours are. */
+.afs-discovery .afs-field select option {
+	background: Canvas;
+	color: CanvasText;
+}
+
+/* Buttons --------------------------------------------------------------------- */
+
+.afs-discovery .afs-actions {
+	margin-left: 0;
+}
+
+/* The block editor's preview has no script to hide the Update button (every control applies as it changes on the front end). */
+.editor-styles-wrapper .afs-discovery .afs-update {
+	display: none;
+}
+
+/* Reset is shown only when a filter is active and the active-filter chips (with their own Clear all) are off. */
+.afs-discovery .afs-reset {
+	display: none;
+}
+
+.afs-discovery.afs-js.afs-is-filtered:not(.afs-has-chips) .afs-reset {
+	display: inline-block;
+}
+
+.afs-discovery .afs-btn {
+	min-height: var(--afs-control);
+	padding: 0.5rem 1.1rem;
+	border: 1px solid var(--afs-border);
+	border-radius: var(--afs-radius-sm);
+	background: transparent;
+	color: inherit;
+	font-weight: 600;
+}
+
+.afs-discovery .afs-btn:hover {
+	border-color: currentColor;
+}
+
+.afs-discovery .afs-btn-primary,
+.afs-discovery .afs-btn-primary:hover {
+	border-color: var(--afs-accent);
+	background: var(--afs-accent);
+	color: var(--afs-on-accent);
+}
+
+/* Layout switch: a segmented control ------------------------------------------- */
+
+.afs-discovery.afs-js .afs-Switch {
+	grid-column: 2;
+	grid-row: 1;
+	justify-self: end;
+	gap: 0;
+	margin: 0;
+	padding: 3px;
+	border-radius: calc(var(--afs-radius-sm) + 3px);
+	background: var(--afs-soft);
+}
+
+.afs-discovery .afs-switch-btn {
+	display: grid;
+	place-items: center;
+	width: 2.5rem;
+	min-height: 2.5rem;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: var(--afs-radius-sm);
+	background: transparent;
+	color: var(--afs-muted);
+}
+
+.afs-discovery .afs-icon {
+	width: 1.15rem;
+	height: 1.15rem;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.8;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+.afs-discovery .afs-switch-btn:hover {
+	color: inherit;
+}
+
+.afs-discovery .afs-switch-btn[aria-pressed="true"] {
+	background: var(--afs-accent);
+	color: var(--afs-on-accent);
+}
+
+/* Result bar: active filters on the left, count on the right ------------------- */
+
+.afs-discovery .afs-results {
+	margin-top: 1.25rem;
+	position: relative;
+}
+
+.afs-discovery .afs-resultbar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem 1rem;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 1.25rem;
+}
+
+.afs-discovery .afs-resultbar .afs-chips {
+	margin: 0;
+	gap: 0.5rem;
+}
+
+.afs-discovery .afs-resultbar .afs-count {
+	margin: 0 0 0 auto;
+	color: var(--afs-muted);
+	font-size: 0.875em;
+}
+
+.afs-discovery .afs-chip {
+	min-height: 2rem;
+	padding: 0 0.8rem;
+	border: 1px solid transparent;
+	background: var(--afs-tint);
+	color: inherit;
+	font-weight: 600;
+}
+
+.afs-discovery .afs-chip:hover {
+	border-color: currentColor;
+}
+
+.afs-discovery .afs-chip-clear {
+	color: var(--afs-muted);
+	font-weight: 600;
+}
+
+/* Pagination ------------------------------------------------------------------- */
+
+.afs-discovery .afs-pagination {
+	margin-top: 1.75rem;
+}
+
+.afs-discovery .afs-pagination ul {
+	justify-content: center;
+	gap: 0.4rem;
+}
+
+.afs-discovery .afs-pagination .afs-btn {
+	display: grid;
+	place-items: center;
+	min-width: var(--afs-control);
+	padding: 0 0.8rem;
+}
+
+/* Empty and error states ---------------------------------------------------------- */
+
+.afs-discovery .afs-none__title,
+.afs-discovery .afs-none__hint {
+	display: block;
+}
+
+.afs-discovery .afs-none__title {
+	color: inherit;
+	font-size: 1.05rem;
+}
+
+.afs-discovery .afs-none__hint {
+	margin-top: 0.25rem;
+	font-size: 0.9rem;
+	font-weight: 400;
+}
+
+.afs-discovery .afs-none {
+	padding: 2.25rem 1rem;
+	border: 1px dashed var(--afs-border);
+	border-radius: var(--afs-radius);
+	background: var(--afs-soft);
+	color: var(--afs-muted);
+	font-weight: 600;
+	text-align: center;
+}
+
+.afs-discovery .afs-recover {
+	margin-top: 0.75rem;
+	text-align: center;
+}
+
+.afs-discovery .afs-error {
+	border: 1px solid currentColor;
+	border-radius: var(--afs-radius);
+	background: var(--afs-soft);
+}
+
+/* Loading: dim the results (no layout shift). ------------------------------------------- */
+
+.afs-discovery.afs-loading .afs-results {
+	opacity: 0.55;
+	pointer-events: none;
+}
+
+/* Small screens ----------------------------------------------------------------------- */
+
+@media (max-width: 640px) {
+	/* Category pills wrap onto a second line instead of clipping at the edge, and stay beside the layout switch. */
+	.afs-discovery .afs-CommonTabs {
+		gap: 0.4rem;
+	}
+
+	.afs-discovery .afs-CommonTabs a {
+		padding: 0.4rem 0.75rem;
+		font-size: 0.8125rem;
+	}
+
+	.afs-discovery .afs-form {
+		gap: 0.75rem;
+	}
+
+	.afs-discovery .afs-Filters {
+		gap: 0.6rem;
+	}
+
+	/* Search on its own line; month, year and sort share the next one. */
+	.afs-discovery .afs-field,
+	.afs-discovery .afs-field-search {
+		flex: 1 1 calc(33% - 0.4rem);
+		max-width: none;
+	}
+
+	.afs-discovery .afs-field-search {
+		flex-basis: 100%;
+	}
+
+	.afs-discovery .afs-field select {
+		padding-left: 0.5rem;
+		padding-right: 1.55rem;
+		font-size: 0.875rem;
+		background-position: calc(100% - 0.9rem) 55%, calc(100% - 0.6rem) 55%;
+	}
+
+	.afs-discovery .afs-actions {
+		width: auto;
+		flex: 1 1 100%;
+	}
+
+	.afs-discovery .afs-resultbar {
+		margin-bottom: 1rem;
+	}
+
+	.afs-discovery .afs-resultbar .afs-count {
+		margin-left: 0;
+	}
+
+	.afs-discovery .afs-pagination ul {
+		gap: 0.3rem;
+	}
+
+	.afs-discovery .afs-pagination .afs-btn {
+		min-width: 2.5rem;
+		padding: 0 0.5rem;
+	}
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.afs-discovery .afs-btn,
+	.afs-discovery .afs-field input,
+	.afs-discovery .afs-field select,
+	.afs-discovery .afs-CommonTabs a {
+		transition: border-color 0.15s ease, background-color 0.15s ease;
+	}
+}
+
+@media (forced-colors: active) {
+	.afs-discovery .afs-CommonTabs a,
+	.afs-discovery .afs-chip,
+	.afs-discovery .afs-btn {
+		border: 1px solid CanvasText;
+	}
+}
